@@ -1,5 +1,5 @@
 /**
- * Draw a wireframe
+ * Draws a wireframe
  * @param {CanvasContext} ctx 
  * @param {array} proj_tris 
  */
@@ -34,6 +34,8 @@ function load_obj(text) {
         lines[i] = lines[i].split(" ");
 
         switch (lines[i][0]) {
+
+            // Parse model vertex data
             case "v":
                 lines[i].splice(0, 1);
 
@@ -41,6 +43,7 @@ function load_obj(text) {
                 v.push(lines[i]);
                 break;
 
+            // Parse texture vertex data
             case "vt":
                 lines[i].splice(0, 1);
 
@@ -48,6 +51,7 @@ function load_obj(text) {
                 vt.push([lines[i][0], lines[i][1], 0]);
                 break;
 
+            // Parse face data
             case "f":
                 lines[i].splice(0, 1);
 
@@ -111,25 +115,12 @@ function load_obj(text) {
 }
 
 /**
- * Calculates the world matrix
- * @param {vector} rot rotation of scene
- * @returns {matrix}
- */
-function calc_world_mat(rot) {
-    let world_mat = mat_math.make_identity();
-    world_mat = mat_math.mult_mat(mat_math.rot_x(rot[0]), mat_math.rot_y(rot[1]));
-    world_mat = mat_math.mult_mat(world_mat, mat_math.rot_z(rot[2]));
-    return world_mat;
-}
-
-/**
- * Draws a triangle
+ * Draws a textured triangle
  * @param {triangle} tri Triangle
  * @param {triangle_uv} uv UV coordinates for triangle
  * @param {shader} frag_shader Fragment shader function 
  */
-function draw_triangle(tri, uv, frag_shader) {
-
+function draw_triangle(tri_id, tri, uv, frag_shader) {
     ctx.fillStyle = "rgb(255, 255, 255)";
 
     let x1 = tri[0][0];
@@ -152,6 +143,7 @@ function draw_triangle(tri, uv, frag_shader) {
     let w2 = uv[1][2];
     let w3 = uv[2][2];
 
+    // Sort points in the triangle
     if (y2 < y1) {
         [x1, x2] = [x2, x1];
         [y1, y2] = [y2, y1];
@@ -197,6 +189,7 @@ function draw_triangle(tri, uv, frag_shader) {
     let dw1_step = 0;
     let dw2_step = 0;
 
+    // Calculate step variables
     if (dy1) {
         dax_step = dx1 / Math.abs(dy1);
         du1_step = du1 / Math.abs(dy1);
@@ -211,6 +204,7 @@ function draw_triangle(tri, uv, frag_shader) {
         dw2_step = dw2 / Math.abs(dy2);
     }
 
+    // Loop over points from top to bottom
     if (dy1) {
         for (let i = y1; i <= y2; i++) {
             let ax = x1 + (i - y1) * dax_step;
@@ -238,12 +232,13 @@ function draw_triangle(tri, uv, frag_shader) {
             let t_step = 1 / (bx - ax);
             let t = 0;
 
+            // Loop over points from left to right
             for (let j = ax; j < bx; j++) {
                 tex_u = (1 - t) * tex_su + t * tex_eu;
                 tex_v = (1 - t) * tex_sv + t * tex_ev;
                 tex_w = (1 - t) * tex_sw + t * tex_ew;
 
-                frag_shader(Math.round(j), Math.round(i), tex_u / tex_w, tex_v / tex_w);
+                frag_shader(tri_id, Math.round(j), Math.round(i), tex_u / tex_w, tex_v / tex_w);
                 t += t_step;
             }
         }
@@ -258,7 +253,10 @@ function draw_triangle(tri, uv, frag_shader) {
     du1_step = 0;
     dv1_step = 0;
 
-    if (dy2) dbx_step = dx2 / Math.abs(dy2);
+    // Calculate new step variables
+    if (dy2) {
+        dbx_step = dx2 / Math.abs(dy2);
+    }
 
     if (dy1) {
         dax_step = dx1 / Math.abs(dy1);
@@ -267,6 +265,7 @@ function draw_triangle(tri, uv, frag_shader) {
         dw1_step = dw1 / Math.abs(dy1);
     }
 
+    // Loop over points from top to bottom again
     if (dy1) {
         for (let i = y2; i <= y3; i++) {
             let ax = x2 + (i - y2) * dax_step;
@@ -294,12 +293,14 @@ function draw_triangle(tri, uv, frag_shader) {
             let t_step = 1 / (bx - ax);
             let t = 0;
 
+            // Loop over points from left to right again
             for (let j = ax; j < bx; j++) {
                 tex_u = (1 - t) * tex_su + t * tex_eu;
                 tex_v = (1 - t) * tex_sv + t * tex_ev;
                 tex_w = (1 - t) * tex_sw + t * tex_ew;
 
-                frag_shader(Math.round(j), Math.round(i), tex_u / tex_w, tex_v / tex_w);
+                // todo: triangle anti-aliasing
+                frag_shader(tri_id, Math.round(j), Math.round(i), tex_u / tex_w, tex_v / tex_w);
                 t += t_step;
             }
         }
@@ -307,16 +308,149 @@ function draw_triangle(tri, uv, frag_shader) {
 }
 
 /**
- * Sets the color of a pixel in the color buffer
+ * Sets a pixel in the color buffer
  * @param {color} color Color of the pixel
  * @param {vector} loc The location of the pixel (x, y)
  * @param {buffer} buffer Color buffer
  */
 function set_color(color, loc, buffer) {
+    if (loc[0] < 0 || loc[0] > buffer.width) return;
+    if (loc[1] < 0 || loc[1] > buffer.height) return;
+
     let index = (loc[0] * 4) + (loc[1] * canvas.width * 4);
 
     buffer.data[index + 0] = color[0];
     buffer.data[index + 1] = color[1];
     buffer.data[index + 2] = color[2];
     buffer.data[index + 3] = 255;
+}
+
+/**
+ * Finds the point of intersection of 2 lines
+ * @param {vector} plane_p Point on plane
+ * @param {vector} plane_n Normal plane
+ * @param {vector} line_start Start of the line
+ * @param {vector} line_end End of the line
+ * @returns {array} Point of intersection
+ */
+function intersect_plane(plane_p, plane_n, line_start, line_end) {
+    plane_n = vector.norm(plane_n);
+    let plane_d = -vector.dp(plane_n, plane_p);
+    let ad = vector.dp(line_start, plane_n);
+    let bd = vector.dp(line_end, plane_n);
+    let t = (-plane_d - ad) / (bd - ad);
+    let line_start_to_end = vector.sub(line_end, line_start);
+    let line_to_intersect = vector.mul(line_start_to_end, t);
+    return [vector.add(line_start, line_to_intersect), t];
+}
+
+/**
+ * Clips a triangle
+ * @param {vector} plane_p Point on plane
+ * @param {vector} plane_n Normal plane
+ * @param {triangle} in_tri Input triangle
+ * @param {triangle} in_tex Input texture
+ * @returns {array} Array of triangles vertex data and triangle texture data
+ */
+function clip(plane_p, plane_n, in_tri, in_tex) {    
+    plane_n = vector.norm(plane_n);
+
+    let inside_points = [];
+    let outside_points = [];
+    let inside_tex = [];
+    let outside_tex = [];
+
+    let d0 = dist(plane_p, plane_n, in_tri[0]);
+    let d1 = dist(plane_p, plane_n, in_tri[1]);
+    let d2 = dist(plane_p, plane_n, in_tri[2]);
+
+    if (d0 >= 0) {
+        inside_points.push(in_tri[0]);
+        inside_tex.push(in_tex[0]);
+    } else {
+        outside_points.push(in_tri[0]);
+        outside_tex.push(in_tex[0]);
+    }
+
+    if (d1 >= 0) {
+        inside_points.push(in_tri[1]);
+        inside_tex.push(in_tex[1]);
+    } else {
+        outside_points.push(in_tri[1]);
+        outside_tex.push(in_tex[1]);
+    }
+
+    if (d2 >= 0) {
+        inside_points.push(in_tri[2]);
+        inside_tex.push(in_tex[2]);
+    } else {
+        outside_points.push(in_tri[2]);
+        outside_tex.push(in_tex[2]);
+    }
+
+    if (inside_points.length == 0) return [[], []];
+    if (inside_points.length == 3) return [[in_tri], [in_tex]];
+
+    if (inside_points.length == 1 && outside_points.length == 2) {
+        let out_tri = matrix.create(3, 4);
+        let out_tex = matrix.create(3, 3);
+
+        out_tri[0] = inside_points[0];
+        out_tex[0] = inside_tex[0];
+
+        let t;
+        [out_tri[1], t] = intersect_plane(plane_p, plane_n, inside_points[0], outside_points[0]);
+        out_tex[1][0] = t * (outside_tex[0][0] - inside_tex[0][0]) + inside_tex[0][0];
+        out_tex[1][1] = t * (outside_tex[0][1] - inside_tex[0][1]) + inside_tex[0][1];
+        out_tex[1][2] = t * (outside_tex[0][2] - inside_tex[0][2]) + inside_tex[0][2];
+
+        [out_tri[2], t] = intersect_plane(plane_p, plane_n, inside_points[0], outside_points[1]);
+        out_tex[2][0] = t * (outside_tex[1][0] - inside_tex[0][0]) + inside_tex[0][0];
+        out_tex[2][1] = t * (outside_tex[1][1] - inside_tex[0][1]) + inside_tex[0][1];
+        out_tex[2][2] = t * (outside_tex[1][2] - inside_tex[0][2]) + inside_tex[0][2];
+
+        return [[out_tri], [out_tex]];
+    }
+
+    if (inside_points.length == 2 && outside_points.length == 1) {
+        let out_tri1_p = matrix.create(3, 4);
+        let out_tri2_p = matrix.create(3, 4);
+        let out_tri1_t = matrix.create(3, 3);
+        let out_tri2_t = matrix.create(3, 3);
+
+        out_tri1_p[0] = inside_points[0];
+        out_tri1_p[1] = inside_points[1];
+        out_tri1_t[0] = inside_tex[0];
+        out_tri1_t[1] = inside_tex[1];
+
+        let t;
+        [out_tri1_p[2], t] = intersect_plane(plane_p, plane_n, inside_points[0], outside_points[0]);
+        out_tri1_t[2][0] = t * (outside_tex[0][0] - inside_tex[0][0]) + inside_tex[0][0];
+        out_tri1_t[2][1] = t * (outside_tex[0][1] - inside_tex[0][1]) + inside_tex[0][1];
+        out_tri1_t[2][2] = t * (outside_tex[0][2] - inside_tex[0][2]) + inside_tex[0][2];
+
+        out_tri2_p[0] = inside_points[1];
+        out_tri2_p[1] = out_tri1_p[2];
+        out_tri2_t[0] = inside_tex[1];
+        out_tri2_t[1] = out_tri1_t[2];
+
+        [out_tri2_p[2], t] = intersect_plane(plane_p, plane_n, inside_points[1], outside_points[0]);
+        out_tri2_t[2][0] = t * (outside_tex[0][0] - inside_tex[1][0]) + inside_tex[1][0];
+        out_tri2_t[2][1] = t * (outside_tex[0][1] - inside_tex[1][1]) + inside_tex[1][1];
+        out_tri2_t[2][2] = t * (outside_tex[0][2] - inside_tex[1][2]) + inside_tex[1][2];
+
+        // idk why you have to make a clone for it to work, but don't touch it! I spent many months fixing this :)
+        return [[out_tri1_p, out_tri2_p], [structuredClone(out_tri1_t), structuredClone(out_tri2_t)]];
+    }
+}
+
+/**
+ * Returns the shortest distance from point to plane
+ * @param {vector} plane_p plane
+ * @param {vector} plane_n Normal on plane
+ * @param {vector} p Point
+ * @returns {vector}
+ */
+function dist(plane_p, plane_n, p) {
+    return plane_n[0] * p[0] + plane_n[1] * p[1] + plane_n[2] * p[2] - vector.dp(plane_n, plane_p);
 }

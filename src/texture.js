@@ -28,6 +28,7 @@ class Texture {
      * @returns {color} color of the pixel
      */
     get_pixel(x, y) {
+        // todo: texture anti-aliasing (maybe something toggleable)
         x = Math.round(x * this.image.width);
         y = Math.round(y * this.image.height);
 

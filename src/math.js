@@ -1,4 +1,4 @@
-const vec_math = {
+const vector = {
     /**
      * Add 2 vectors together
      * @param {vector} v1 vector 1
@@ -26,7 +26,17 @@ const vec_math = {
      * @returns {vector} vector
      */
     div: (v, k) => {
-        return [v[0] / k, v[1] / k, v[2] / k, v[3]];
+        return [v[0] / k, v[1] / k, v[2] / k];
+    },
+
+    /**
+     * Multiplies a vector and an integer
+     * @param {vector} v vector
+     * @param {integer} k integer
+     * @returns {vector} vector
+     */
+    mul: (v, k) => {
+        return [v[0] * k, v[1] * k, v[2] * k];
     },
 
     /**
@@ -59,7 +69,7 @@ const vec_math = {
      * @returns {integer} lenth of the vector
      */
     len: (v) => {
-        return Math.sqrt(vec_math.dp(v, v));
+        return Math.sqrt(vector.dp(v, v));
     },
 
     /**
@@ -68,12 +78,21 @@ const vec_math = {
      * @returns {vector} Normalized vector
      */
     norm: (v) => {
-        const l = vec_math.len(v);
+        const l = vector.len(v);
         return [v[0] / l, v[1] / l, v[2] / l];
+    },
+
+    /**
+     * Formats a vector into a string
+     * @param {vector} v vector
+     * @returns {string} Formatted vector
+     */
+    format: (v) => {
+        return "[" + v.join(", ") + "]";
     }
 }
 
-const mat_math = {
+const matrix = {
 
     /**
      * Creates a matrix (all zeros)
@@ -81,7 +100,7 @@ const mat_math = {
      * @param {integer} c number of columns in the matrix
      * @returns {matrix} matrix
      */
-    mat_create: (r, c) => {
+    create: (r, c) => {
         let m = [];
 
         for (let i = 0; i < r; i++) {
@@ -99,8 +118,8 @@ const mat_math = {
      * Creates a matrix identity
      * @returns {matrix} matrix identity
      */
-    make_identity: () => {
-        let m = mat_math.mat_create(4, 4);
+    identity: () => {
+        let m = matrix.create(4, 4);
         m[0][0] = 1;
         m[1][1] = 1;
         m[2][2] = 1;
@@ -134,7 +153,7 @@ const mat_math = {
      * @returns {matrix} product of matrices
      */
     mult_mat: (m1, m2) => {
-        let m = mat_math.mat_create(4, 4);
+        let m = matrix.create(4, 4);
         for (let c = 0; c < 4; c++) {
             for (let r = 0; r < 4; r++) {
                 m[r][c] =
@@ -153,10 +172,10 @@ const mat_math = {
      * @param {integer} x 
      * @param {integer} y 
      * @param {integer} z 
-     * @returns {matrix}
+     * @returns {matrix} Translation matrix
      */
-    make_translation: (x, y, z) => {
-        let m = mat_math.make_identity();
+    translate: (x, y, z) => {
+        let m = matrix.identity();
         m[3][0] = x;
         m[3][1] = y;
         m[3][2] = z;
@@ -170,7 +189,7 @@ const mat_math = {
      * @returns {matrix}
      */
     rot_x: (angle) => {
-        let m = mat_math.mat_create(4, 4);
+        let m = matrix.create(4, 4);
         m[0][0] = 1;
         m[1][1] = Math.cos(angle);
         m[1][2] = Math.sin(angle);
@@ -187,7 +206,7 @@ const mat_math = {
      * @returns {matrix}
      */
     rot_y: (angle) => {
-        let m = mat_math.mat_create(4, 4);
+        let m = matrix.create(4, 4);
         m[0][0] = Math.cos(angle);
         m[0][2] = Math.sin(angle);
         m[1][1] = 1;
@@ -204,7 +223,8 @@ const mat_math = {
      * @returns {matrix}
      */
     rot_z: (angle) => {
-        let m = mat_math.mat_create(4, 4);
+        let m = matrix.create(4, 4);
+
         m[0][0] = Math.cos(angle);
         m[0][1] = Math.sin(angle);
         m[1][0] = -Math.sin(angle);
@@ -225,7 +245,7 @@ const mat_math = {
      */
     projection: (fov, aspectRatio, near, far) => {
         const fovRad = 1 / Math.tan(fov * 0.5 / 180 * Math.PI);
-        let m = mat_math.mat_create(4, 4);
+        let m = matrix.create(4, 4);
 
         m[0][0] = aspectRatio * fovRad;
         m[1][1] = fovRad;
@@ -234,5 +254,39 @@ const mat_math = {
         m[3][2] = (-far * near) / (far - near);
 
         return m;
+    },
+
+    /**
+     * Calculates the world matrix
+     * @param {vector} rot rotation of scene
+     * @returns {matrix}
+     */
+    calc_world_mat: (rot) => {
+        let world_mat = matrix.mult_mat(matrix.rot_x(rot[0]), matrix.rot_y(rot[1]));
+        world_mat = matrix.mult_mat(world_mat, matrix.rot_z(rot[2]));
+        return world_mat;
+    },
+
+    /**
+     * Formats a matrix into a string
+     * @param {matrix} matrix
+     * @returns {string} formatted string
+     */
+    format: (mat) => {
+        let out = "[";
+        for (let i = 0; i < mat.length; i++) {
+            console.log(mat[i]);
+
+            out += "[" + mat[i].join(", ");
+
+            if (mat[i + 1]) {
+                out += "], ";
+            } else {
+                out += "]";
+            }
+        }
+        
+        out += "]";
+        return out;
     }
 }
