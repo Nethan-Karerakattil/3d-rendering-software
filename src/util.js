@@ -120,7 +120,7 @@ function load_obj(text) {
  * @param {triangle_uv} uv UV coordinates for triangle
  * @param {shader} frag_shader Fragment shader function 
  */
-function draw_triangle(tri_id, tri, uv, frag_shader) {
+function draw_triangle(tri_id, tri, uv, depth_buffer, frag_shader) {
     ctx.fillStyle = "rgb(255, 255, 255)";
 
     let x1 = tri[0][0];
@@ -238,7 +238,14 @@ function draw_triangle(tri_id, tri, uv, frag_shader) {
                 tex_v = (1 - t) * tex_sv + t * tex_ev;
                 tex_w = (1 - t) * tex_sw + t * tex_ew;
 
-                frag_shader(tri_id, Math.round(j), Math.round(i), tex_u / tex_w, tex_v / tex_w);
+                let rounded = [Math.round(j), Math.round(i)];
+                if (!(rounded[0] >= canvas.width || rounded[0] <= 0 || rounded[1] >= canvas.height || rounded[1] <= 0)) {
+                    if (tex_w > depth_buffer[rounded[0] - 1][rounded[1] - 1]) {
+                        frag_shader(tri_id, rounded[0], rounded[1], tex_u / tex_w, tex_v / tex_w);
+                        depth_buffer[rounded[0] - 1][rounded[1] - 1] = tex_w;
+                    }
+                }
+
                 t += t_step;
             }
         }
@@ -300,7 +307,14 @@ function draw_triangle(tri_id, tri, uv, frag_shader) {
                 tex_w = (1 - t) * tex_sw + t * tex_ew;
 
                 // todo: triangle anti-aliasing
-                frag_shader(tri_id, Math.round(j), Math.round(i), tex_u / tex_w, tex_v / tex_w);
+                let rounded = [Math.round(j), Math.round(i)];
+                if (!(rounded[0] >= canvas.width || rounded[0] <= 0 || rounded[1] >= canvas.height || rounded[1] <= 0)) {
+                    if (tex_w > depth_buffer[rounded[0] - 1][rounded[1] - 1]) {
+                        frag_shader(tri_id, rounded[0], rounded[1], tex_u / tex_w, tex_v / tex_w);
+                        depth_buffer[rounded[0] - 1][rounded[1] - 1] = tex_w;
+                    }
+                }
+
                 t += t_step;
             }
         }
@@ -347,7 +361,7 @@ function intersect_plane(plane_p, plane_n, line_start, line_end) {
 /**
  * Clips a triangle
  * @param {vector} plane_p Point on plane
- * @param {vector} plane_n Normal plane
+ * @param {vector} plane_n Normal to plane
  * @param {triangle} in_tri Input triangle
  * @param {triangle} in_tex Input texture
  * @returns {array} Array of triangles vertex data and triangle texture data

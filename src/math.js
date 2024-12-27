@@ -257,6 +257,50 @@ const matrix = {
     },
 
     /**
+     * Creates an view matrix
+     * @param {vector} pos position of camera
+     * @param {vector} target the point the camera is looking at
+     * @param {vector} up point directly ontop of the camera
+     */
+    calc_view_mat: (pos, target, up) => {
+        // Calc camera matrix
+        let new_forward = vector.norm(vector.sub(target, pos));
+        let a = vector.mul(new_forward, vector.dp(up, new_forward));
+        let new_up = vector.norm(vector.sub(up, a));
+        let new_right = vector.cp(up, new_forward);
+
+        let cam_mat = [];
+        cam_mat[0] = [   new_right[0],   new_right[1],   new_right[2], 0];
+        cam_mat[1] = [      new_up[0],      new_up[1],      new_up[2], 0];
+        cam_mat[2] = [ new_forward[0], new_forward[1], new_forward[2], 0];
+        cam_mat[3] = [         pos[0],         pos[1],         pos[2], 0];
+
+        // Invert to get view matrix
+        let view_mat = matrix.create(4, 4);
+        view_mat[0][0] = cam_mat[0][0];
+        view_mat[0][1] = cam_mat[1][0];
+        view_mat[0][2] = cam_mat[2][0];
+        view_mat[0][3] = 0;
+
+        view_mat[1][0] = cam_mat[0][1];
+        view_mat[1][1] = cam_mat[1][1];
+        view_mat[1][2] = cam_mat[2][1];
+        view_mat[1][3] = 0;
+
+        view_mat[2][0] = cam_mat[0][2];
+        view_mat[2][1] = cam_mat[1][2];
+        view_mat[2][2] = cam_mat[2][2];
+        view_mat[2][3] = 0;
+
+        view_mat[3][0] = -(cam_mat[3][0] * view_mat[0][0] + cam_mat[3][1] * view_mat[1][0] + cam_mat[3][2] * view_mat[2][0]);
+        view_mat[3][1] = -(cam_mat[3][0] * view_mat[0][1] + cam_mat[3][1] * view_mat[1][1] + cam_mat[3][2] * view_mat[2][1]);
+        view_mat[3][2] = -(cam_mat[3][0] * view_mat[0][2] + cam_mat[3][1] * view_mat[1][2] + cam_mat[3][2] * view_mat[2][2]);
+        view_mat[3][3] = 1;
+
+        return view_mat;
+    },
+
+    /**
      * Calculates the world matrix
      * @param {vector} rot rotation of scene
      * @returns {matrix}
@@ -275,8 +319,6 @@ const matrix = {
     format: (mat) => {
         let out = "[";
         for (let i = 0; i < mat.length; i++) {
-            console.log(mat[i]);
-
             out += "[" + mat[i].join(", ");
 
             if (mat[i + 1]) {
